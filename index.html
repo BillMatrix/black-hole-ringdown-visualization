@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Black Hole Ringdown Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #000;
+            color: #fff;
+            overflow-x: hidden;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            text-align: center;
+            padding: 20px 0;
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #0ff;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+        p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .visualization-container {
+            position: relative;
+            width: 100%;
+            height: 70vh;
+            margin: 20px 0;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            min-width: 200px;
+        }
+        label {
+            margin-bottom: 5px;
+            color: #0ff;
+        }
+        button, .btn {
+            background-color: rgba(0, 255, 255, 0.2);
+            color: #fff;
+            border: 1px solid #0ff;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        button:hover, .btn:hover {
+            background-color: rgba(0, 255, 255, 0.4);
+            transform: scale(1.05);
+        }
+        input[type="range"] {
+            width: 100%;
+            background: rgba(0, 255, 255, 0.2);
+            height: 8px;
+            border-radius: 4px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #0ff;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .parameter-display {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 8px;
+        }
+        .parameter-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .parameter-table th, .parameter-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+        }
+        .parameter-table th {
+            color: #0ff;
+        }
+        .chart-container {
+            height: 200px;
+            margin: 20px 0;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+            position: relative;
+        }
+        .chart {
+            width: 100%;
+            height: 100%;
+        }
+        footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 30px;
+            border-top: 1px solid rgba(0, 255, 255, 0.3);
+            font-size: 0.9rem;
+        }
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+            p {
+                font-size: 1rem;
+            }
+            .visualization-container {
+                height: 50vh;
+            }
+            .control-group {
+                min-width: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Black Hole Ringdown Visualization</h1>
+            <p>This animation visualizes the ringdown phase after two black holes collide, showing the distortion of spacetime as gravitational waves propagate outward.</p>
+        </header>
+
+        <div class="visualization-container">
+            <canvas id="spacetimeCanvas"></canvas>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="amplitude">Wave Amplitude (A)</label>
+                <input type="range" id="amplitude" min="0.1" max="2" step="0.1" value="1">
+            </div>
+            <div class="control-group">
+                <label for="decay">Decay Rate (τ)</label>
+                <input type="range" id="decay" min="1" max="20" step="0.5" value="10">
+            </div>
+            <div class="control-group">
+                <label for="frequency">Initial Frequency (ω)</label>
+                <input type="range" id="frequency" min="0.1" max="2" step="0.1" value="1">
+            </div>
+            <div class="control-group">
+                <label for="phase">Phase Shift (φ)</label>
+                <input type="range" id="phase" min="0" max="6.28" step="0.1" value="0">
+            </div>
+            <button id="resetBtn">Reset Animation</button>
+            <button id="pauseBtn">Pause/Resume</button>
+        </div>
+
+        <div class="parameter-display">
+            <h2>Current Parameters</h2>
+            <table class="parameter-table">
+                <thead>
+                    <tr>
+                        <th>Parameter</th>
+                        <th>Value</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Amplitude (A)</td>
+                        <td id="ampValue">1.0</td>
+                        <td>Initial strength of the gravitational wave</td>
+                    </tr>
+                    <tr>
+                        <td>Decay Time (τ)</td>
+                        <td id="decayValue">10.0</td>
+                        <td>Time constant for exponential decay</td>
+                    </tr>
+                    <tr>
+                        <td>Frequency (ω)</td>
+                        <td id="freqValue">1.0</td>
+                        <td>Angular frequency of oscillation</td>
+                    </tr>
+                    <tr>
+                        <td>Phase (φ)</td>
+                        <td id="phaseValue">0.0</td>
+                        <td>Phase shift of the wave</td>
+                    </tr>
+                    <tr>
+                        <td>Elapsed Time</td>
+                        <td id="timeValue">0.0s</td>
+                        <td>Time since animation start</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="chart-container">
+            <h2>Wave Amplitude Over Time</h2>
+            <canvas id="amplitudeChart" class="chart"></canvas>
+        </div>
+
+        <footer>
+            <p>© 2023 Black Hole Ringdown Visualization | Based on the physics of gravitational waves</p>
+        </footer>
+    </div>
+
+    <script>
+        // Canvas setup
+        const canvas = document.getElementById('spacetimeCanvas');
+        const ctx = canvas.getContext('2d');
+        const chartCanvas = document.getElementById('amplitudeChart');
+        const chartCtx = chartCanvas.getContext('2d');
+        
+        // Set canvas dimensions
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            chartCanvas.width = chartCanvas.offsetWidth;
+            chartCanvas.height = chartCanvas.offsetHeight;
+        }
+        
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        
+        // Animation parameters
+        let params = {
+            amplitude: 1.0,
+            decayTime: 10.0,
+            frequency: 1.0,
+            phase: 0.0,
+            time: 0,
+            isRunning: true,
+            lastTimestamp: 0,
+            gridSize: 20,
+            dataPoints: []
+        };
+        
+        // UI elements
+        const ampSlider = document.getElementById('amplitude');
+        const decaySlider = document.getElementById('decay');
+        const freqSlider = document.getElementById('frequency');
+        const phaseSlider = document.getElementById('phase');
+        const resetBtn = document.getElementById('resetBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        
+        // Value displays
+        const ampValue = document.getElementById('ampValue');
+        const decayValue = document.getElementById('decayValue');
+        const freqValue = document.getElementById('freqValue');
+        const phaseValue = document.getElementById('phaseValue');
+        const timeValue = document.getElementById('timeValue');
+        
+        // Event listeners
+        ampSlider.addEventListener('input', () => {
+            params.amplitude = parseFloat(ampSlider.value);
+            ampValue.textContent = params.amplitude.toFixed(1);
+        });
+        
+        decaySlider.addEventListener('input', () => {
+            params.decayTime = parseFloat(decaySlider.value);
+            decayValue.textContent = params.decayTime.toFixed(1);
+        });
+        
+        freqSlider.addEventListener('input', () => {
+            params.frequency = parseFloat(freqSlider.value);
+            freqValue.textContent = params.frequency.toFixed(1);
+        });
+        
+        phaseSlider.addEventListener('input', () => {
+            params.phase = parseFloat(phaseSlider.value);
+            phaseValue.textContent = params.phase.toFixed(1);
+        });
+        
+        resetBtn.addEventListener('click', () => {
+            params.time = 0;
+            params.dataPoints = [];
+            params.isRunning = true;
+        });
+        
+        pauseBtn.addEventListener('click', () => {
+            params.isRunning = !params.isRunning;
+        });
+        
+        // Wave function: h(t) = A * exp(-t/tau) * cos(omega * t + phi)
+        function waveFunction(x, y, t) {
+            const distance = Math.sqrt(x*x + y*y);
+            const adjustedTime = t - distance * 0.1; // Wave propagation delay
+            
+            if (adjustedTime < 0) return 0;
+            
+            // Frequency decreases over time
+            const omega = params.frequency * (1 - 0.5 * adjustedTime / 30);
+            
+            return params.amplitude * 
+                   Math.exp(-adjustedTime / params.decayTime) * 
+                   Math.cos(omega * adjustedTime + params.phase);
+        }
+        
+        // Draw spacetime grid
+        function drawGrid(t) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const gridSpacing = Math.min(canvas.width, canvas.height) / params.gridSize;
+            
+            // Draw horizontal grid lines
+            for (let y = 0; y <= params.gridSize; y++) {
+                ctx.beginPath();
+                ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
+                ctx.lineWidth = 1;
+                
+                for (let x = 0; x <= canvas.width; x += 5) {
+                    const gridY = y * gridSpacing;
+                    const normalizedX = (x - centerX) / gridSpacing;
+                    const normalizedY = (gridY - centerY) / gridSpacing;
+                    
+                    // Apply wave distortion
+                    const distortion = waveFunction(normalizedX, normalizedY, t) * gridSpacing * 0.5;
+                    
+                    if (x === 0) {
+                        ctx.moveTo(x, gridY + distortion);
+                    } else {
+                        ctx.lineTo(x, gridY + distortion);
+                    }
+                }
+                ctx.stroke();
+            }
+            
+            // Draw vertical grid lines
+            for (let x = 0; x <= params.gridSize; x++) {
+                ctx.beginPath();
+                ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
+                ctx.lineWidth = 1;
+                
+                for (let y = 0; y <= canvas.height; y += 5) {
+                    const gridX = x * gridSpacing;
+                    const normalizedX = (gridX - centerX) / gridSpacing;
+                    const normalizedY = (y - centerY) / gridSpacing;
+                    
+                    // Apply wave distortion
+                    const distortion = waveFunction(normalizedX, normalizedY, t) * gridSpacing * 0.5;
+                    
+                    if (y === 0) {
+                        ctx.moveTo(gridX + distortion, y);
+                    } else {
+                        ctx.lineTo(gridX + distortion, y);
+                    }
+                }
+                ctx.stroke();
+            }
+            
+            // Draw black hole
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, gridSpacing * 1.5, 0, Math.PI * 2);
+            ctx.fillStyle = 'black';
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.fill();
+            ctx.stroke();
+            
+            // Glow effect
+            const gradient = ctx.createRadialGradient(
+                centerX, centerY, gridSpacing * 1.5,
+                centerX, centerY, gridSpacing * 3
+            );
+            gradient.addColorStop(0, 'rgba(0, 255, 255, 0.5)');
+            gradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
+            
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, gridSpacing * 3, 0, Math.PI * 2);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+        }
+        
+        // Draw amplitude chart
+        function updateChart() {
+            const maxPoints = 100;
+            const width = chartCanvas.width;
+            const height = chartCanvas.height;
+            
+            // Add new data point
+            if (params.time > 0 && params.dataPoints.length < maxPoints) {
+                const centerValue = waveFunction(0, 0, params.time);
+                params.dataPoints.push({time: params.time, value: centerValue});
+            }
+            
+            // Limit data points
+            if (params.dataPoints.length > maxPoints) {
+                params.dataPoints.shift();
+            }
+            
+            // Clear chart
+            chartCtx.clearRect(0, 0, width, height);
+            
+            // Draw axes
+            chartCtx.beginPath();
+            chartCtx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
+            chartCtx.moveTo(0, height/2);
+            chartCtx.lineTo(width, height/2);
+            chartCtx.stroke();
+            
+            // Draw data points
+            if (params.dataPoints.length > 1) {
+                chartCtx.beginPath();
+                chartCtx.strokeStyle = '#0ff';
+                chartCtx.lineWidth = 2;
+                
+                const maxTime = 30;
+                const scale = height / 4;
+                
+                for (let i = 0; i < params.dataPoints.length; i++) {
+                    const point = params.dataPoints[i];
+                    const x = (point.time / maxTime) * width;
+                    const y = height/2 - point.value * scale;
+                    
+                    if (i === 0) {
+                        chartCtx.moveTo(x, y);
+                    } else {
+                        chartCtx.lineTo(x, y);
+                    }
+                }
+                chartCtx.stroke();
+            }
+        }
+        
+        // Animation loop
+        function animate(timestamp) {
+            if (!params.lastTimestamp) params.lastTimestamp = timestamp;
+            const deltaTime = (timestamp - params.lastTimestamp) / 1000; // Convert to seconds
+            params.lastTimestamp = timestamp;
+            
+            if (params.isRunning) {
+                params.time += deltaTime;
+                if (params.time > 30) params.time = 30; // Cap at 30 seconds
+                
+                timeValue.textContent = params.time.toFixed(1) + 's';
+            }
+            
+            drawGrid(params.time);
+            updateChart();
+            
+            requestAnimationFrame(animate);
+        }
+        
+        // Initialize values
+        ampValue.textContent = params.amplitude.toFixed(1);
+        decayValue.textContent = params.decayTime.toFixed(1);
+        freqValue.textContent = params.frequency.toFixed(1);
+        phaseValue.textContent = params.phase.toFixed(1);
+        
+        // Start animation
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>
